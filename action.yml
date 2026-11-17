@@ -1,0 +1,29 @@
+name: Scoped Git token
+description: Run commands with a GitHub token that Git uses only for named repositories.
+author: Mathematic
+inputs:
+  token:
+    description: GitHub token for the named repositories.
+    required: true
+  repositories:
+    description: One owner/name on each line. The action ignores blank lines and spaces or tabs around a name.
+    required: true
+  run:
+    description: Commands to execute with Bash.
+    required: true
+  working-directory:
+    description: Directory for the commands. The default is github.workspace.
+branding:
+  icon: lock
+  color: blue
+runs:
+  using: composite
+  steps:
+    - name: Run with a scoped Git token
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SCOPED_GIT_TOKEN: ${{ inputs.token }}
+        SCOPED_GIT_REPOSITORIES: ${{ inputs.repositories }}
+        SCOPED_GIT_RUN: ${{ inputs.run }}
+      run: bash "$GITHUB_ACTION_PATH/scoped-git-token.sh"
