@@ -1,15 +1,14 @@
 # Scoped Git token for GitHub Actions
 
-`mathematic-inc/scoped-git-token-action` runs Bash commands with a GitHub token for the repositories you name.
-The token stays in that process environment, so later job steps have no credential from this action.
+`mathematic-inc/scoped-git-token-action` runs Bash commands, and Git in these commands uses a GitHub token only for the repositories that you name.
+The token is only in the environment of these commands, so later job steps have no credential from this action.
 
 The action writes no token to a file, Git config file, or remote URL.
 Files can outlive a step and enter caches or artifacts.
 
 ## Usage
 
-The example pins each action to a full commit.
-This action has no release tag yet; its pin refers to the first implementation commit.
+The example uses the release `v2026.11.0`. Pin its full commit, with the version in a comment.
 
 ```yaml
 permissions:
@@ -27,7 +26,7 @@ steps:
       owner: my-org
       repositories: private-tools
       permission-contents: read
-  - uses: mathematic-inc/scoped-git-token-action@85d76ff2c6e0aa7fe8bf90e72b76367624c59209 # Initial implementation
+  - uses: mathematic-inc/scoped-git-token-action@v2026.11.0
     with:
       token: ${{ steps.app-token.outputs.token }}
       repositories: |
@@ -37,34 +36,33 @@ steps:
         bash private-tools/check.sh
 ```
 
-Install the GitHub App on each target repository and grant it the permissions your commands need.
-Use a token with those permissions.
+Set `persist-credentials: false` on actions/checkout. If not, Git commands in that checkout send its token, not this one.
+Install the GitHub App on each repository. Give the token only the permissions that your commands need.
+The action needs Git 2.31 or later.
 
 ## Inputs
 
 | Input | Default | Purpose |
 | --- | --- | --- |
-| `token` | Required | GitHub token. The action masks it in job logs. |
-| `repositories` | Required | One `owner/name` per line. Allows outer spaces, tabs, and blank lines. |
-| `run` | Required | Commands for `bash --noprofile --norc -e -o pipefail`. The step returns their exit code. |
-| `working-directory` | Current directory | Directory for the commands. Accepts a relative or absolute path. |
-
-Owner names allow letters, digits, and hyphens.
-Repository names also allow underscores and periods, except `.` and `..` alone.
-An invalid name fails with `Invalid repository name '<name>'; use owner/name.`
-An empty repository list fails before any command executes.
+| `token` | Required | GitHub token. Pass a secret or a masked step output, because the runner prints inputs before the action can mask them. |
+| `repositories` | Required | One `owner/name` on each line. Write each name as it appears in the URLs. The action ignores blank lines and spaces or tabs around a name. |
+| `run` | Required | Commands for `bash --noprofile --norc -e -o pipefail`. The step returns their exit code. The commands cannot set step outputs. |
+| `working-directory` | `github.workspace` | Directory for the commands. A relative path starts at `github.workspace`. |
 
 ## Credential scope
 
-The host comes from `github.server_url`, so the action supports GitHub Enterprise Server.
+The host comes from `GITHUB_SERVER_URL`, so the action supports GitHub Enterprise Server.
 Each repository has entries for both URL forms, with and without `.git`.
 For each form, the action clears prior helpers, adds its helper, and sets `useHttpPath`.
 It appends these entries after the job's current `GIT_CONFIG_COUNT` entries.
 
-The helper reads the token from its environment when Git calls it and answers only `get`.
+The helper reads the token from its environment when Git calls it. The helper answers only `get`.
 Its config value contains a variable reference, so `GIT_TRACE=1` does not print the token.
-`GIT_TERMINAL_PROMPT=0` prevents a terminal prompt when Git has no credential.
-The action preserves other job environment variables.
+The action sets `GIT_TERMINAL_PROMPT=0`, so Git fails at once when it has no credential.
+
+The commands, and each program that they start, can read the token in `SCOPED_GIT_TOKEN`.
+Limit the token to the named repositories. Run only trusted code.
+Processes that the commands leave in the background keep the token until the job ends.
 
 ## Development
 
@@ -73,11 +71,6 @@ bash tests/contracts.sh
 shellcheck scoped-git-token.sh tests/*.sh
 actionlint
 ```
-
-CI runs the local action on Ubuntu, macOS, and Windows with `github.token`.
-The tests use `git credential fill` without network requests and never print its response.
-They check both URL forms, scope, prior config, step isolation, input errors, exit codes, and trace output.
-Script tests also check a custom host, lower helper reset, and the helper's operations.
 
 ## License
 

@@ -9,6 +9,9 @@ permissions:
 concurrency:
   group: scoped-git-token-ci-${{ github.ref }}
   cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
 jobs:
   verify:
     name: Verify (${{ matrix.os }})
@@ -18,26 +21,27 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-    defaults:
-      run:
-        shell: bash
     env:
-      GIT_CONFIG_NOSYSTEM: "1"
       GIT_ASKPASS: ""
       SSH_ASKPASS: ""
-      GCM_INTERACTIVE: never
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Run with default inputs
+        uses: ./
+        with:
+          token: ${{ github.token }}
+          repositories: mathematic-inc/scoped-git-token-action
+          run: |
+            test -f action.yml
+            printf 'url=%s\n\n' "$GITHUB_SERVER_URL/mathematic-inc/scoped-git-token-action" | git credential fill >/dev/null
       - name: Set prior Git config
         run: |
           cat >> "$GITHUB_ENV" <<'CONFIG'
-          GIT_CONFIG_COUNT=2
+          GIT_CONFIG_COUNT=1
           GIT_CONFIG_KEY_0=test.preserved
           GIT_CONFIG_VALUE_0=present
-          GIT_CONFIG_KEY_1=credential.helper
-          GIT_CONFIG_VALUE_1=
           CONFIG
       - name: Check credentials and trace
         uses: ./
@@ -48,34 +52,23 @@ jobs:
           repositories: |
             mathematic-inc/scoped-git-token-action
 
-              mathematic-inc/another_repo.test
+              mona-cat_octo/another_repo.test
           working-directory: tests
           run: bash credentials.sh present
       - name: Check the next step
         run: bash tests/credentials.sh absent
-      - name: Reject an invalid repository
-        id: invalid
-        continue-on-error: true
-        uses: ./
-        with:
-          token: ${{ github.token }}
-          repositories: invalid-name
-          run: exit 0
       - name: Return the command failure
-        id: command
+        id: failing-command
         continue-on-error: true
         uses: ./
         with:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
           run: exit 37
-      - name: Check failed step outcomes
+      - name: Check the failed step outcome
         env:
-          INVALID_OUTCOME: ${{ steps.invalid.outcome }}
-          COMMAND_OUTCOME: ${{ steps.command.outcome }}
-        run: |
-          test "$INVALID_OUTCOME" = failure
-          test "$COMMAND_OUTCOME" = failure
+          FAILING_COMMAND_OUTCOME: ${{ steps.failing-command.outcome }}
+        run: test "$FAILING_COMMAND_OUTCOME" = failure
       - name: Check script contracts
         run: bash tests/contracts.sh
   lint:
@@ -89,7 +82,6 @@ jobs:
       - name: Check Bash
         run: shellcheck scoped-git-token.sh tests/*.sh
       - name: Check workflow
-        shell: bash
         run: |
           cd "$RUNNER_TEMP"
           curl --fail --silent --show-error --location \
