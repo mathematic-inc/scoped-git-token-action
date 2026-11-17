@@ -1,0 +1,31 @@
+name: Scoped Git token
+description: Run commands with a GitHub token for named repositories only.
+inputs:
+  token:
+    description: GitHub token for the named repositories.
+    required: true
+  repositories:
+    description: One owner/name per line; spaces and blank lines are allowed.
+    required: true
+  run:
+    description: Commands to execute with Bash.
+    required: true
+  working-directory:
+    description: Directory for the commands; defaults to the current directory.
+    required: false
+branding:
+  icon: lock
+  color: blue
+runs:
+  using: composite
+  steps:
+    - name: Run with a scoped Git token
+      shell: bash
+      env:
+        SCOPED_GIT_TOKEN: ${{ inputs.token }}
+        SCOPED_GIT_REPOSITORIES: ${{ inputs.repositories }}
+        SCOPED_GIT_RUN: ${{ inputs.run }}
+        SCOPED_GIT_DIRECTORY: ${{ inputs.working-directory }}
+        SCOPED_GIT_SERVER_URL: ${{ github.server_url }}
+        SCOPED_GIT_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SCOPED_GIT_ACTION_PATH/scoped-git-token.sh"

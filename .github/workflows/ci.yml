@@ -1,0 +1,101 @@
+name: Verify scoped Git token
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: scoped-git-token-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    defaults:
+      run:
+        shell: bash
+    env:
+      GIT_CONFIG_NOSYSTEM: "1"
+      GIT_ASKPASS: ""
+      SSH_ASKPASS: ""
+      GCM_INTERACTIVE: never
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set prior Git config
+        run: |
+          cat >> "$GITHUB_ENV" <<'CONFIG'
+          GIT_CONFIG_COUNT=2
+          GIT_CONFIG_KEY_0=test.preserved
+          GIT_CONFIG_VALUE_0=present
+          GIT_CONFIG_KEY_1=credential.helper
+          GIT_CONFIG_VALUE_1=
+          CONFIG
+      - name: Check credentials and trace
+        uses: ./
+        env:
+          TEST_TOKEN: ${{ github.token }}
+        with:
+          token: ${{ github.token }}
+          repositories: |
+            mathematic-inc/scoped-git-token-action
+
+              mathematic-inc/another_repo.test
+          working-directory: tests
+          run: bash credentials.sh present
+      - name: Check the next step
+        run: bash tests/credentials.sh absent
+      - name: Reject an invalid repository
+        id: invalid
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ github.token }}
+          repositories: invalid-name
+          run: exit 0
+      - name: Return the command failure
+        id: command
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ github.token }}
+          repositories: mathematic-inc/scoped-git-token-action
+          run: exit 37
+      - name: Check failed step outcomes
+        env:
+          INVALID_OUTCOME: ${{ steps.invalid.outcome }}
+          COMMAND_OUTCOME: ${{ steps.command.outcome }}
+        run: |
+          test "$INVALID_OUTCOME" = failure
+          test "$COMMAND_OUTCOME" = failure
+      - name: Check script contracts
+        run: bash tests/contracts.sh
+  lint:
+    name: ShellCheck and actionlint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Bash
+        run: shellcheck scoped-git-token.sh tests/*.sh
+      - name: Check workflow
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output actionlint.tar.gz
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz' | sha256sum --check
+          tar -xzf actionlint.tar.gz actionlint
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/actionlint" -color
