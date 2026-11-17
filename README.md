@@ -8,7 +8,7 @@ Files can outlive a step and enter caches or artifacts.
 
 ## Usage
 
-The example uses the release `v2026.11.0`. Pin its full commit, with the version in a comment.
+The example pins release `v2026.11.0` by its full commit, and you must pin a release the same way.
 
 ```yaml
 permissions:
@@ -26,7 +26,7 @@ steps:
       owner: my-org
       repositories: private-tools
       permission-contents: read
-  - uses: mathematic-inc/scoped-git-token-action@v2026.11.0
+  - uses: mathematic-inc/scoped-git-token-action@bc7f1fae365ee7ae6b304713303b656df1096eeb # v2026.11.0
     with:
       token: ${{ steps.app-token.outputs.token }}
       repositories: |
