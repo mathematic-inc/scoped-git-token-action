@@ -32,7 +32,7 @@ for repository in 'missing-slash' 'owner/' 'owner/.' 'owner/..'; do
   [[ $output == *"Invalid repository name '$repository'. Use owner/name." ]] || fail 'The repository error does not show its sentence.'
 done
 SCOPED_GIT_REPOSITORIES=$' \n\t\r' assert_exit 1
-SCOPED_GIT_TOKEN='' assert_exit 1
+SCOPED_GIT_TOKEN='' SCOPED_GIT_RUN='exit 99' assert_exit 1
 SCOPED_GIT_RUN='' assert_exit 1
 printf 'PASS invalid and absent inputs\n'
 

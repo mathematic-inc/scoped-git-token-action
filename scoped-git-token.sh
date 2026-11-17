@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${SCOPED_GIT_TOKEN:?Input 'token' is required.}"
+: "${SCOPED_GIT_TOKEN:?Input token is required.}"
 mask=${SCOPED_GIT_TOKEN//%/%25}
 mask=${mask//$'\r'/%0D}
 mask=${mask//$'\n'/%0A}
 printf '::add-mask::%s\n' "$mask"
 
-: "${SCOPED_GIT_RUN:?Input 'run' is required.}"
+: "${SCOPED_GIT_RUN:?Input run is required.}"
 
 GIT_CONFIG_COUNT=${GIT_CONFIG_COUNT:-0}
 
