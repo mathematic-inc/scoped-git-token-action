@@ -18,11 +18,11 @@ permissions:
   contents: read
 
 steps:
-  # actions/checkout v7.0.1
+  # v7.0.1
   - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     with:
       persist-credentials: false
-  # actions/create-github-app-token v3.3.0
+  # v3.3.0
   - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
     id: app-token
     with:
@@ -31,7 +31,7 @@ steps:
       owner: my-org
       repositories: private-tools
       permission-contents: read
-  # mathematic-inc/scoped-git-token-action v2026.11.0
+  # v2026.11.0
   - uses: mathematic-inc/scoped-git-token-action@bc7f1fae365ee7ae6b304713303b656df1096eeb
     with:
       token: ${{ steps.app-token.outputs.token }}
