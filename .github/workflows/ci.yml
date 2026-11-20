@@ -29,7 +29,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run with default inputs
-        uses: ./
+        uses: $/
         with:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
@@ -44,7 +44,7 @@ jobs:
           GIT_CONFIG_VALUE_0=present
           CONFIG
       - name: Check credentials and trace
-        uses: ./
+        uses: $/
         env:
           TEST_TOKEN: ${{ github.token }}
         with:
@@ -60,7 +60,7 @@ jobs:
       - name: Return the command failure
         id: failing-command
         continue-on-error: true
-        uses: ./
+        uses: $/
         with:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
