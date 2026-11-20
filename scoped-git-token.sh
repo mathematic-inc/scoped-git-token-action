@@ -23,7 +23,7 @@ while IFS= read -r repository; do
   repository=${repository%"${repository##*[![:space:]]}"}
   [[ -n $repository ]] || continue
   if [[ ! $repository =~ ^[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+$ ||
-        ${repository#*/} == . || ${repository#*/} == .. ]]; then
+    ${repository#*/} == . || ${repository#*/} == .. ]]; then
     printf "Invalid repository name '%s'. Use owner/name.\n" "${repository//[[:cntrl:]]/?}" >&2
     exit 1
   fi
@@ -35,7 +35,7 @@ while IFS= read -r repository; do
     add_config "credential.$url.useHttpPath" true
   done
   repository_count=$((repository_count + 1))
-done <<< "${SCOPED_GIT_REPOSITORIES:-}"
+done <<<"${SCOPED_GIT_REPOSITORIES:-}"
 
 if [[ $repository_count == 0 ]]; then
   printf "Input 'repositories' must contain at least one owner/name.\n" >&2

@@ -17,6 +17,8 @@ jobs:
     name: Verify (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +31,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run with default inputs
-        uses: ./
+        uses: $/
         with:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
@@ -44,7 +46,7 @@ jobs:
           GIT_CONFIG_VALUE_0=present
           CONFIG
       - name: Check credentials and trace
-        uses: ./
+        uses: $/
         env:
           TEST_TOKEN: ${{ github.token }}
         with:
@@ -60,7 +62,7 @@ jobs:
       - name: Return the command failure
         id: failing-command
         continue-on-error: true
-        uses: ./
+        uses: $/
         with:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
@@ -71,23 +73,18 @@ jobs:
         run: test "$FAILING_COMMAND_OUTCOME" = failure
       - name: Check script contracts
         run: bash tests/contracts.sh
-  lint:
-    name: ShellCheck and actionlint
+  check:
+    name: Check
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: Check Bash
-        run: shellcheck scoped-git-token.sh tests/*.sh
-      - name: Check workflow
-        run: |
-          cd "$RUNNER_TEMP"
-          curl --fail --silent --show-error --location \
-            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
-            --output actionlint.tar.gz
-          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz' | sha256sum --check
-          tar -xzf actionlint.tar.gz actionlint
-          cd "$GITHUB_WORKSPACE"
-          "$RUNNER_TEMP/actionlint" -color
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
+      - name: Run hk
+        run: hk check --all --slow --skip-step toolconfig
