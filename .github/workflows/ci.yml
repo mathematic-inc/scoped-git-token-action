@@ -1,14 +1,13 @@
-name: Verify scoped Git token
+name: CI
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-permissions:
-  contents: read
+permissions: {}
 concurrency:
-  group: scoped-git-token-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 defaults:
   run:
     shell: bash
@@ -27,7 +26,8 @@ jobs:
       GIT_ASKPASS: ""
       SSH_ASKPASS: ""
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Run with default inputs
@@ -57,9 +57,9 @@ jobs:
               mona-cat_octo/another_repo.test
           working-directory: tests
           run: bash credentials.sh present
-      - name: Check the next step
+      - name: Check next step has no credentials
         run: bash tests/credentials.sh absent
-      - name: Return the command failure
+      - name: Return command failure
         id: failing-command
         continue-on-error: true
         uses: $/
@@ -67,7 +67,7 @@ jobs:
           token: ${{ github.token }}
           repositories: mathematic-inc/scoped-git-token-action
           run: exit 37
-      - name: Check the failed step outcome
+      - name: Check failed step outcome
         env:
           FAILING_COMMAND_OUTCOME: ${{ steps.failing-command.outcome }}
         run: test "$FAILING_COMMAND_OUTCOME" = failure
@@ -80,11 +80,31 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
-      - uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
-      - name: Run hk
+      - name: Install tools
+        uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - name: Check and generate ToolConfig files
+        uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
+      - name: Run checks
         run: hk check --all --slow --skip-step toolconfig
+  required:
+    name: required
+    if: always()
+    needs: [verify, check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check job results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          if ! jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$NEEDS" > /dev/null; then
+            echo "::error::A job failed or was cancelled."
+            exit 1
+          fi
