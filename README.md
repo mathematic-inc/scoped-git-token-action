@@ -79,10 +79,14 @@ job ends.
 ## Development
 
 ```sh
-bash tests/contracts.sh
-shellcheck scoped-git-token.sh tests/*.sh
-actionlint
+mise install
+mise run check
+mise run test
 ```
+
+`mise run check` runs hk with the checks of the organization.
+`mise run test` runs `tests/contracts.sh`.
+The `generate` task writes the files that ToolConfig generates.
 
 ## License
 
